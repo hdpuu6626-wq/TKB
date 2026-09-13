@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thời gian biểu học tập V5</title>
+<style>
+:root{
+  --bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#667085;
+  --primary:#4f46e5;--primary2:#7c3aed;--green:#16a34a;
+  --orange:#ea580c;--red:#dc2626;--border:#e5e7eb;
+  --shadow:0 10px 30px rgba(31,41,55,.08)
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select{font:inherit}
+button{cursor:pointer;border:0}
+.app{max-width:1500px;margin:auto;padding:18px}
+.topbar{display:flex;gap:16px;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#312e81,#7c3aed);color:white;border-radius:20px;padding:20px 24px;box-shadow:var(--shadow)}
+.brand h1{margin:0;font-size:25px}.brand p{margin:5px 0 0;opacity:.82}
+.clock{text-align:right}.clock .time{font-size:30px;font-weight:800;letter-spacing:1px}.clock .date{font-size:13px;opacity:.85}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;margin:15px 0}
+.btn{padding:10px 14px;border-radius:12px;background:white;color:var(--text);border:1px solid var(--border);box-shadow:0 2px 7px rgba(0,0,0,.03)}
+.btn.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn.danger{color:var(--red)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:15px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:15px;box-shadow:var(--shadow)}
+.stat b{font-size:24px}.stat span{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.week{display:grid;grid-template-columns:90px repeat(7,minmax(150px,1fr));background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:auto;box-shadow:var(--shadow)}
+.dayhead{position:sticky;top:0;z-index:5;background:#fafafa;border-bottom:1px solid var(--border);padding:12px 8px;text-align:center;font-weight:800}
+.dayhead.today{background:#ede9fe;color:#4338ca}
+.timehead{background:#fafafa;border-right:1px solid var(--border)}
+.hour{height:58px;border-bottom:1px solid #eef0f3;padding:7px 8px;color:var(--muted);font-size:12px;text-align:right}
+.cell{height:58px;border-left:1px solid var(--border);border-bottom:1px solid #eef0f3;padding:4px;position:relative}
+.event{position:absolute;inset:3px;border-radius:10px;padding:6px 8px;color:white;overflow:hidden;font-size:12px;line-height:1.2;box-shadow:0 3px 8px rgba(0,0,0,.12);cursor:pointer}
+.event b{display:block;font-size:12px}.event small{opacity:.9}
+.event.done{filter:saturate(.35);opacity:.72}.event.done b{text-decoration:line-through}
+.event.nckh{background:#2563eb}.event.english{background:#16a34a}.event.chinese{background:#ea580c}
+.event.school{background:#6366f1}.event.other{background:#64748b}.event.art{background:#db2777}
+.nowline{position:absolute;left:0;right:0;height:2px;background:#ef4444;z-index:4;pointer-events:none}
+.modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;padding:18px;z-index:20}
+.modal{width:min(560px,100%);background:white;border-radius:20px;padding:20px;box-shadow:0 25px 80px rgba(0,0,0,.25)}
+.modal h2{margin:0 0 15px}.form{display:grid;gap:12px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{font-size:13px;font-weight:700}.field{display:grid;gap:5px}
+input,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;outline:none}
+input:focus,select:focus{border-color:var(--primary)}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:15px}
+.help{margin-top:15px;color:var(--muted);font-size:13px}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.week{grid-template-columns:65px repeat(7,145px)}.topbar{align-items:flex-start}.clock .time{font-size:22px}}
+@media(max-width:600px){.app{padding:10px}.stats{gap:8px}.stat{padding:11px}.stat b{font-size:20px}.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <h1>📚 THỜI GIAN BIỂU V5</h1>
+      <p>Học tập • NCKH • Ngoại ngữ • Văn nghệ • Theo dõi tiến độ</p>
+    </div>
+    <div class="clock"><div class="time" id="clock">--:--:--</div><div class="date" id="date">---</div></div>
+  </header>
+
+  <div class="toolbar">
+    <button class="btn primary" onclick="openAdd()">＋ Thêm lịch</button>
+    <button class="btn" onclick="addDefaultSchedule()">↻ Khôi phục lịch mẫu</button>
+    <button class="btn" onclick="exportData()">⬇ Xuất lịch</button>
+    <button class="btn" onclick="document.getElementById('importFile').click()">⬆ Nhập lịch</button>
+    <input id="importFile" type="file" accept=".json" hidden onchange="importData(event)">
+    <button class="btn danger" onclick="clearAll()">Xóa toàn bộ</button>
+  </div>
+
+  <section class="stats">
+    <div class="stat"><b id="total">0</b><span>Tổng hoạt động</span></div>
+    <div class="stat"><b id="done">0</b><span>Đã hoàn thành</span></div>
+    <div class="stat"><b id="remain">0</b><span>Còn lại</span></div>
+    <div class="stat"><b id="percent">0%</b><span>Tiến độ tuần</span></div>
+  </section>
+
+  <div class="week" id="calendar"></div>
+  <div class="help">💡 Nhấp vào một lịch để sửa/xóa. Nhấp đúp vào ô trống để thêm hoạt động. Trạng thái hoàn thành được tự lưu trên trình duyệt.</div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h2 id="modalTitle">Thêm hoạt động</h2>
+    <form class="form" onsubmit="saveEvent(event)">
+      <input type="hidden" id="eventId">
+      <div class="field"><label>Tên hoạt động</label><input id="title" required placeholder="Ví dụ: Nghiên cứu Khoa học"></div>
+      <div class="row">
+        <div class="field"><label>Ngày</label><select id="day"></select></div>
+        <div class="field"><label>Loại</label>
+          <select id="type">
+            <option value="nckh">🔬 Nghiên cứu Khoa học</option>
+            <option value="english">🇬🇧 Tiếng Anh</option>
+            <option value="chinese">🇨🇳 Tiếng Trung</option>
+            <option value="school">🏫 Học ở trường</option>
+            <option value="art">🎭 Văn nghệ</option>
+            <option value="other">📌 Hoạt động khác</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Bắt đầu</label><input id="start" type="time" min="06:00" max="22:00" required></div>
+        <div class="field"><label>Kết thúc</label><input id="end" type="time" min="06:00" max="22:00" required></div>
+      </div>
+      <div class="field"><label>Ghi chú</label><input id="note" placeholder="Mục tiêu / nội dung cần làm"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closeModal()">Hủy</button>
+        <button type="button" class="btn danger" id="deleteBtn" onclick="deleteEvent()" style="display:none">Xóa</button>
+        <button class="btn primary">Lưu lịch</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const DAYS=["T2","T3","T4","T5","T6","T7","CN"];
+const TIMES=[];
+for(let h=6;h<=22;h++) TIMES.push(String(h).padStart(2,"0")+":00");
+const KEY="thoigianbieu_v5";
+let events=JSON.parse(localStorage.getItem(KEY)||"null");
+
+function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function minutes(t){let [h,m]=t.split(":").map(Number);return h*60+m}
+function save(){localStorage.setItem(KEY,JSON.stringify(events));render();updateStats()}
+function defaultEvents(){
+  const a=[];
+  const add=(d,s,e,title,type,note="")=>a.push({id:id(),day:d,start:s,end:e,title,type,note,done:false});
+  // Lịch học cố định theo yêu cầu
+  add(0,"07:00","11:00","🏫 Học ở trường — 5 tiết","school");
+  add(1,"07:00","11:00","🏫 Học ở trường — 5 tiết","school");
+  add(2,"13:30","17:30","🏫 Học ở trường — 5 tiết","school");
+  add(3,"07:00","09:30","🏫 Học ở trường — 3 tiết","school");
+  add(4,"07:00","09:30","🏫 Học ở trường — 3 tiết","school");
+  add(4,"13:30","15:00","🏫 Học ở trường — 2 tiết","school");
+  // Hoạt động khác cố định
+  add(2,"08:00","10:00","🎯 Hoạt động khác","other");
+  add(3,"19:30","20:30","🎭 Văn nghệ","art");
+  add(6,"19:30","20:30","🎭 Văn nghệ","art");
+  // Các buổi tối NCKH, trừ tối T5 và CN văn nghệ
+  add(0,"19:30","21:00","🔬 Nghiên cứu Khoa học","nckh","Buổi NCKH");
+  add(1,"19:30","21:00","🔬 Nghiên cứu Khoa học","nckh","Buổi NCKH");
+  add(2,"19:30","21:00","🔬 Nghiên cứu Khoa học","nckh","Buổi NCKH");
+  add(4,"19:30","21:00","🔬 Nghiên cứu Khoa học","nckh","Buổi NCKH");
+  add(5,"19:30","21:00","🔬 Nghiên cứu Khoa học","nckh","Buổi NCKH");
+  // Xếp ngoại ngữ vào thời gian còn lại
+  add(3,"15:30","17:00","🇬🇧 Tiếng Anh","english","Ôn từ vựng + nghe");
+  add(5,"08:00","09:30","🇨🇳 Tiếng Trung","chinese","Từ vựng + phát âm");
+  return a;
+}
+if(!Array.isArray(events)) events=defaultEvents();
+
+function render(){
+  const cal=document.getElementById("calendar"); cal.innerHTML="";
+  const blank=document.createElement("div"); blank.className="dayhead timehead"; blank.textContent="Giờ"; cal.appendChild(blank);
+  DAYS.forEach((d,i)=>{let x=document.createElement("div");x.className="dayhead"+(new Date().getDay()===((i+1)%7)?" today":"");x.textContent=d;cal.appendChild(x)});
+  for(let h=6;h<=22;h++){
+    let t=document.createElement("div");t.className="hour";t.textContent=String(h).padStart(2,"0")+":00";cal.appendChild(t);
+    DAYS.forEach((d,di)=>{
+      let cell=document.createElement("div");cell.className="cell";cell.dataset.day=di;cell.dataset.hour=h;
+      cell.ondblclick=()=>openAdd(di, String(h).padStart(2,"0")+":00");
+      cal.appendChild(cell);
+    });
+  }
+  // Events are placed over cells using absolute positioning in a day column.
+  events.forEach(ev=>{
+    const col=document.querySelectorAll('.cell[data-day="'+ev.day+'"]');
+    const startH=Math.max(6,Math.floor(minutes(ev.start)/60));
+    const idx=startH-6;
+    if(!col[idx]) return;
+    const el=document.createElement("div"); el.className="event "+ev.type+(ev.done?" done":"");
+    const top=(minutes(ev.start)%60)/60*58;
+    const height=Math.max(30,(minutes(ev.end)-minutes(ev.start))/60*58-2);
+    el.style.top=top+"px"; el.style.height=height+"px";
+    el.innerHTML="<b>"+escapeHtml(ev.title)+"</b><small>"+ev.start+"–"+ev.end+(ev.note?" · "+escapeHtml(ev.note):"")+"</small>";
+    el.onclick=(e)=>{e.stopPropagation();openEdit(ev.id)};
+    col[idx].appendChild(el);
+  });
+  addNowLine();
+}
+function addNowLine(){
+  const d=(new Date().getDay()+6)%7; // Mon=0
+  const now=new Date(), mins=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
+  if(mins<360||mins>1320) return;
+  const cells=document.querySelectorAll('.cell[data-day="'+d+'"]');
+  const idx=Math.floor((mins-360)/60);
+  if(!cells[idx]) return;
+  let line=document.createElement("div");line.className="nowline";line.style.top=((mins%60)/60*58)+"px";cells[idx].appendChild(line);
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+
+function updateClock(){
+ const n=new Date();document.getElementById("clock").textContent=n.toLocaleTimeString("vi-VN");
+ document.getElementById("date").textContent=n.toLocaleDateString("vi-VN",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});
+}
+function updateStats(){
+ const total=events.length,done=events.filter(x=>x.done).length;
+ document.getElementById("total").textContent=total;document.getElementById("done").textContent=done;
+ document.getElementById("remain").textContent=total-done;
+ document.getElementById("percent").textContent=total?Math.round(done/total*100)+"%":"0%";
+}
+function fillDays(){document.getElementById("day").innerHTML=DAYS.map((x,i)=>`<option value="${i}">${x}</option>`).join("")}
+function openAdd(d=0,t="19:30"){
+ document.getElementById("modalTitle").textContent="Thêm hoạt động";
+ document.getElementById("eventId").value="";document.getElementById("title").value="";
+ document.getElementById("day").value=d;document.getElementById("type").value="other";
+ document.getElementById("start").value=t;document.getElementById("end").value=addHour(t);
+ document.getElementById("note").value="";document.getElementById("deleteBtn").style.display="none";
+ document.getElementById("modalBg").style.display="flex";
+}
+function addHour(t){let m=Math.min(1320,minutes(t)+60),h=Math.floor(m/60),mm=m%60;return String(h).padStart(2,"0")+":"+String(mm).padStart(2,"0")}
+function openEdit(eid){
+ const e=events.find(x=>x.id===eid);if(!e)return;
+ document.getElementById("modalTitle").textContent="Chỉnh sửa hoạt động";
+ document.getElementById("eventId").value=e.id;document.getElementById("title").value=e.title;
+ document.getElementById("day").value=e.day;document.getElementById("type").value=e.type;
+ document.getElementById("start").value=e.start;document.getElementById("end").value=e.end;
+ document.getElementById("note").value=e.note||"";document.getElementById("deleteBtn").style.display="block";
+ document.getElementById("modalBg").style.display="flex";
+}
+function closeModal(){document.getElementById("modalBg").style.display="none"}
+function saveEvent(e){
+ e.preventDefault();const eid=document.getElementById("eventId").value;
+ const obj={id:eid||id(),title:document.getElementById("title").value.trim(),day:+document.getElementById("day").value,
+ type:document.getElementById("type").value,start:document.getElementById("start").value,end:document.getElementById("end").value,
+ note:document.getElementById("note").value.trim(),done:false};
+ if(minutes(obj.end)<=minutes(obj.start)){alert("Giờ kết thúc phải sau giờ bắt đầu.");return}
+ if(minutes(obj.start)<360||minutes(obj.end)>1320){alert("Lịch chỉ nằm trong 06:00–22:00.");return}
+ const old=events.find(x=>x.id===eid); if(old)obj.done=old.done;
+ if(eid) events=events.map(x=>x.id===eid?obj:x); else events.push(obj);
+ save();closeModal();
+}
+function deleteEvent(){const eid=document.getElementById("eventId").value;if(!eid)return;if(confirm("Xóa hoạt động này?")){events=events.filter(x=>x.id!==eid);save();closeModal()}}
+document.getElementById("calendar").addEventListener("click",e=>{
+ const ev=e.target.closest(".event");if(!ev)return;
+});
+function toggleDone(eid){events=events.map(x=>x.id===eid?({...x,done:!x.done}):x);save()}
+function addDefaultSchedule(){if(confirm("Khôi phục lịch mẫu và thay lịch hiện tại?")){events=defaultEvents();save()}}
+function clearAll(){if(confirm("Xóa toàn bộ lịch?")){events=[];save()}}
+function exportData(){
+ const blob=new Blob([JSON.stringify(events,null,2)],{type:"application/json"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="thoi-gian-bieu-v5.json";a.click();URL.revokeObjectURL(a.href)
+}
+function importData(ev){
+ const f=ev.target.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const data=JSON.parse(r.result);if(!Array.isArray(data))throw 0;events=data;save();alert("Đã nhập lịch thành công.")}catch{alert("File không hợp lệ.")}};
+ r.readAsText(f);ev.target.value="";
+}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
+document.getElementById("modalBg").addEventListener("click",e=>{if(e.target.id==="modalBg")closeModal()});
+fillDays();render();updateStats();updateClock();setInterval(()=>{updateClock();render()},1000);
+</script>
+</body>
+</html>
